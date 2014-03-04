@@ -49,11 +49,14 @@ class DbFile(object):
 
         return self.path
 
-    def dump(self):
+    def dump(self, plain=False):
         if self.dump_path:
             return self.dump_path
 
         fn = self._rawdb()
+        if plain:
+            return fn
+
         self.dump_path = self._tmpfile()
         outf = open(self.dump_path, "w")
         subprocess.call(shlex.split("sqlite3 {0} .dump".format(fn)), stdout=outf)
@@ -74,12 +77,15 @@ def parse_arguments():
     parser.add_argument('db2', help='Second database file')
     parser.add_argument('--meld', help='Use Meld',
                         action='store_true')
+    parser.add_argument('--plain', action='store_true',
+                        help='When content of the compressed file '
+                        'is not database but plain text')
 
     return parser.parse_args()
 
-def diff(f1, f2, meld=False):
-    fn1 = f1.dump()
-    fn2 = f2.dump()
+def diff(f1, f2, meld=False, plain=False):
+    fn1 = f1.dump(plain=plain)
+    fn2 = f2.dump(plain=plain)
 
     if meld:
         subprocess.call(shlex.split("meld {0} {1}".format(fn1, fn2)))
@@ -94,7 +100,7 @@ if __name__ == "__main__":
     f1 = DbFile(args.db1)
     f2 = DbFile(args.db2)
 
-    ret = diff(f1, f2, args.meld)
+    ret = diff(f1, f2, meld=args.meld, plain=args.plain)
 
     # Next two lines are important, because otherwise __del__method of DbFile
     # is called after the os module is collected by garbage collector.
